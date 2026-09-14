@@ -71,3 +71,34 @@ import Testing
     #expect(out.contains { $0 > 3 })
   }
 }
+
+@Suite struct FallbackGoldenTests {
+  private func golden() throws -> [String: [String: String]] {
+    let url = try #require(Bundle.module.url(forResource: "fallback-golden", withExtension: "json", subdirectory: "Fixtures"))
+    return try JSONDecoder().decode([String: [String: String]].self, from: Data(contentsOf: url))
+  }
+
+  private func token(_ word: String) -> MToken {
+    MToken(text: word, tokenRange: word.startIndex..<word.endIndex, whitespace: "")
+  }
+
+  @Test func americanMatchesThePyTorchModel() throws {
+    let expected = try #require(try golden()["us"])
+    let net = EnglishFallbackNetwork(british: false)
+    for (word, phonemes) in expected.sorted(by: { $0.key < $1.key }) {
+      #expect(net(token(word)).phoneme == phonemes, "us \(word)")
+    }
+  }
+
+  @Test func britishMatchesThePyTorchModel() throws {
+    let expected = try #require(try golden()["gb"])
+    let net = EnglishFallbackNetwork(british: true)
+    for (word, phonemes) in expected.sorted(by: { $0.key < $1.key }) {
+      #expect(net(token(word)).phoneme == phonemes, "gb \(word)")
+    }
+  }
+
+  @Test func ratingIsOne() {
+    #expect(EnglishFallbackNetwork(british: false)(token("blorptastic")).rating == 1)
+  }
+}

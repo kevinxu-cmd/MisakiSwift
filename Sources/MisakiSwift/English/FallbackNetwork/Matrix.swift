@@ -146,7 +146,7 @@ struct Matrix: Sendable {
     return out
   }
 
-  /// The exact gelu, `x * (1 + erf(x / sqrt 2)) / 2`, the form MLXNN and Transformers use here.
+  /// The exact gelu, `x * (1 + erf(x / sqrt 2)) / 2`, the form Transformers uses here.
   func gelu() -> Matrix {
     Matrix(rows: rows, cols: cols, data: data.map { $0 * (1 + erff($0 / Float(2).squareRoot())) / 2 })
   }
