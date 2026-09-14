@@ -39,4 +39,11 @@ import Testing
     try whole.prefix(whole.count - 100).write(to: tmp)
     #expect(throws: Safetensors.Error.self) { try Safetensors.load(tmp) }
   }
+
+  @Test func rejectsAnOversizedHeaderLength() throws {
+    let bytes = Data(repeating: 0xFF, count: 16)
+    let tmp = FileManager.default.temporaryDirectory.appendingPathComponent("oversized-header.safetensors")
+    try bytes.write(to: tmp)
+    #expect(throws: Safetensors.Error.self) { try Safetensors.load(tmp) }
+  }
 }

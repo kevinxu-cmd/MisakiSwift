@@ -26,8 +26,10 @@ enum Safetensors {
   static func load(_ url: URL) throws -> [String: Tensor] {
     let bytes = try Data(contentsOf: url)
     guard bytes.count >= 8 else { throw Error.truncated }
-    let headerLength = bytes.prefix(8).withUnsafeBytes { Int($0.loadUnaligned(as: UInt64.self).littleEndian) }
-    guard bytes.count >= 8 + headerLength else { throw Error.truncated }
+    let rawHeaderLength = bytes.prefix(8).withUnsafeBytes { $0.loadUnaligned(as: UInt64.self).littleEndian }
+    guard let headerLength = Int(exactly: rawHeaderLength), headerLength <= bytes.count - 8 else {
+      throw Error.badHeader
+    }
     let headerData = bytes.subdata(in: 8..<(8 + headerLength))
     guard let raw = try? JSONSerialization.jsonObject(with: headerData) as? [String: Any] else {
       throw Error.badHeader
