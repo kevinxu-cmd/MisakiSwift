@@ -12,18 +12,34 @@ final class EnglishFallbackNetwork {
 
   init(british: Bool) {
     let prefix = british ? "gb" : "us"
-    guard let configURL = Safetensors.bundledConfig(named: "\(prefix)_bart_config"),
-      let configData = try? Data(contentsOf: configURL),
-      let configuration = try? JSONDecoder().decode(BARTConfig.self, from: configData)
-    else {
-      fatalError("MisakiSwift: the bundled \(prefix)_bart_config.json is missing or unreadable")
+
+    guard let configURL = Safetensors.bundledConfig(named: "\(prefix)_bart_config") else {
+      fatalError("MisakiSwift: \(prefix)_bart_config.json is missing from the package resources")
     }
-    guard let weightsURL = Safetensors.bundledWeights(named: "\(prefix)_bart"),
-      let tensors = try? Safetensors.load(weightsURL),
-      let network = try? BARTNetwork(config: configuration, tensors: tensors)
-    else {
-      fatalError("MisakiSwift: the bundled \(prefix)_bart.safetensors is missing or unreadable")
+    let configuration: BARTConfig
+    do {
+      configuration = try JSONDecoder().decode(BARTConfig.self, from: Data(contentsOf: configURL))
+    } catch {
+      fatalError("MisakiSwift: \(prefix)_bart_config.json could not be read or decoded: \(error)")
     }
+
+    guard let weightsURL = Safetensors.bundledWeights(named: "\(prefix)_bart") else {
+      fatalError("MisakiSwift: \(prefix)_bart.safetensors is missing from the package resources")
+    }
+    let tensors: [String: Safetensors.Tensor]
+    do {
+      tensors = try Safetensors.load(weightsURL)
+    } catch {
+      fatalError("MisakiSwift: \(prefix)_bart.safetensors could not be read: \(error)")
+    }
+
+    let network: BARTNetwork
+    do {
+      network = try BARTNetwork(config: configuration, tensors: tensors)
+    } catch {
+      fatalError("MisakiSwift: the \(prefix) fallback network could not be built from its weights: \(error)")
+    }
+
     self.configuration = configuration
     self.network = network
 

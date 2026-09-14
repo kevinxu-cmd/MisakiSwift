@@ -35,6 +35,14 @@ import Testing
     #expect(abs(variance - 1) < 1e-4)
   }
 
+  @Test func layerNormAppliesWeightBiasAndEps() {
+    // mean 2.5, population variance 1.25, so 1 / sqrt(1.25 + 1) is 2 / 3.
+    let m = Matrix(rows: 1, cols: 4, data: [1, 2, 3, 4])
+      .layerNormRows(weight: [2, 0.5, 1, 3], bias: [1, -1, 0.5, 0], eps: 1)
+    let expected: [Float] = [-1, -7.0 / 6, 5.0 / 6, 3]
+    for (i, want) in expected.enumerated() { #expect(abs(m[0, i] - want) < 1e-5, "column \(i)") }
+  }
+
   @Test func geluIsTheExactForm() {
     let m = Matrix(rows: 1, cols: 3, data: [-1, 0, 1]).gelu()
     #expect(abs(m[0, 0] - (-0.15865526)) < 1e-6)
@@ -67,7 +75,7 @@ import Testing
     #expect(!out.contains(config.eosTokenId))
     // The model re-emits BOS as its first id; the caller drops ids of 3 and below, as the
     // PyTorch reference does.
-    #expect(out.allSatisfy { $0 >= 0 && $0 < config.vocabSize })
+    #expect(out.allSatisfy { $0 < config.vocabSize })
     #expect(out.contains { $0 > 3 })
   }
 }
@@ -84,6 +92,7 @@ import Testing
 
   @Test func americanMatchesThePyTorchModel() throws {
     let expected = try #require(try golden()["us"])
+    #expect(expected.count == 32)
     let net = EnglishFallbackNetwork(british: false)
     for (word, phonemes) in expected.sorted(by: { $0.key < $1.key }) {
       #expect(net(token(word)).phoneme == phonemes, "us \(word)")
@@ -92,6 +101,7 @@ import Testing
 
   @Test func britishMatchesThePyTorchModel() throws {
     let expected = try #require(try golden()["gb"])
+    #expect(expected.count == 32)
     let net = EnglishFallbackNetwork(british: true)
     for (word, phonemes) in expected.sorted(by: { $0.key < $1.key }) {
       #expect(net(token(word)).phoneme == phonemes, "gb \(word)")
@@ -100,5 +110,11 @@ import Testing
 
   @Test func ratingIsOne() {
     #expect(EnglishFallbackNetwork(british: false)(token("blorptastic")).rating == 1)
+  }
+
+  /// A character outside `grapheme_chars` becomes the unknown token rather than a crash,
+  /// and the network still pronounces the rest of the word.
+  @Test func unknownGraphemesMapToTheUnknownToken() {
+    #expect(!EnglishFallbackNetwork(british: false)(token("café")).phoneme.isEmpty)
   }
 }

@@ -71,7 +71,7 @@ MisakiSwift consists of several key components:
 
 ## Dependencies
 
-The package has no package dependencies. Both frameworks it uses ship with the system.
+MisakiSwift has no package dependencies. Both frameworks it uses ship with the system.
 
 - **Accelerate**: Apple's built-in numerics framework, which runs the neural network component
 - **NaturalLanguage**: Apple's built-in framework for text processing and POS tagging

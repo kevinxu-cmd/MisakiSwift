@@ -46,4 +46,33 @@ import Testing
     try bytes.write(to: tmp)
     #expect(throws: Safetensors.Error.self) { try Safetensors.load(tmp) }
   }
+
+  /// Writes a hand-built file: eight bytes of little-endian header length, the header, the body.
+  private func file(header: String, body: Data, named name: String) throws -> URL {
+    let headerBytes = Data(header.utf8)
+    var bytes = Data()
+    withUnsafeBytes(of: UInt64(headerBytes.count).littleEndian) { bytes.append(contentsOf: $0) }
+    bytes.append(headerBytes)
+    bytes.append(body)
+    let url = FileManager.default.temporaryDirectory.appendingPathComponent(name)
+    try bytes.write(to: url)
+    return url
+  }
+
+  @Test func rejectsAHeaderThatIsNotJSON() throws {
+    let url = try file(header: "not json at all", body: Data([0, 0, 0, 0]), named: "not-json.safetensors")
+    #expect(throws: Safetensors.Error.badHeader) { try Safetensors.load(url) }
+  }
+
+  @Test func rejectsADTypeOtherThanF32() throws {
+    let header = #"{"t":{"dtype":"F16","shape":[1,1],"data_offsets":[0,2]}}"#
+    let url = try file(header: header, body: Data([0, 0]), named: "half-precision.safetensors")
+    #expect(throws: Safetensors.Error.unsupportedDType("F16")) { try Safetensors.load(url) }
+  }
+
+  @Test func rejectsOffsetsPastTheBody() throws {
+    let header = #"{"t":{"dtype":"F32","shape":[1,2],"data_offsets":[0,8]}}"#
+    let url = try file(header: header, body: Data([0, 0, 0, 0]), named: "short-body.safetensors")
+    #expect(throws: Safetensors.Error.badOffsets("t")) { try Safetensors.load(url) }
+  }
 }
