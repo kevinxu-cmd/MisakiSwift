@@ -1,6 +1,5 @@
 import Foundation
 import MLX
-import MLXUtilsLibrary
 
 final class EnglishFallbackNetwork {
   static let unknownTokenId = 3
