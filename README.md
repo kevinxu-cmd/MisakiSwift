@@ -61,19 +61,20 @@ MisakiSwift consists of several key components:
 
 - **`EnglishG2P`**: Main conversion pipeline that orchestrates tokenization, lexicon lookup, and neural network fallback
 - **`Lexicon`**: Dictionary-based pronunciation lookup using gold and silver dictionaries
-- **`EnglishFallbackNetwork`**: Transformer-based model (ported to run on MLX) for phoneme prediction for out-of-vocabulary words
+- **`EnglishFallbackNetwork`**: Transformer-based model (running on Accelerate) for phoneme prediction for out-of-vocabulary words
 
 ## Key Differences from Python Misaki
 
 1. **POS Tagging**: Uses Apple's `NaturalLanguage` framework instead of SpaCy for part-of-speech tagging
-2. **Neural Network**: The BART-based fallback network is ported to run on [MLX](https://github.com/ml-explore/mlx-swift)
+2. **Neural Network**: The BART-based fallback network is ported to run on Accelerate
 3. **Resource Management**: All model weights and dictionaries are bundled as resources within the Swift package
 
 ## Dependencies
 
-- **[MLX](https://github.com/ml-explore/mlx-swift)**: Machine learning framework for the neural network component
+The package has no package dependencies. Both frameworks it uses ship with the system.
+
+- **Accelerate**: Apple's built-in numerics framework, which runs the neural network component
 - **NaturalLanguage**: Apple's built-in framework for text processing and POS tagging
-- **MLXUtilsLibrary**: For `MToken`, used also in other parts of the ML stack
 
 ## Model Resources
 

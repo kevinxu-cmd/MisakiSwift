@@ -9,10 +9,8 @@ final class EnglishFallbackNetwork {
   private let network: BARTNetwork
   private let graphemeToToken: [Character: Int]
   private let tokenToPhoneme: [Int: Character]
-  private let british: Bool
 
   init(british: Bool) {
-    self.british = british
     let prefix = british ? "gb" : "us"
     guard let configURL = Safetensors.bundledConfig(named: "\(prefix)_bart_config"),
       let configData = try? Data(contentsOf: configURL),
