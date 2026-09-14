@@ -133,11 +133,14 @@ struct Matrix: Sendable {
     var out = self
     for r in 0..<rows {
       let range = (r * cols)..<((r + 1) * cols)
+      let row = Array(data[range])
+      // Two passes: the mean, then the mean of the squared deviations. The one-pass
+      // E[x^2] - E[x]^2 subtracts two close numbers when the mean is large beside the
+      // spread, and in float32 that cancellation can leave a negative variance.
       var mean: Float = 0
-      var meanOfSquares: Float = 0
-      vDSP_measqv(Array(data[range]), 1, &meanOfSquares, vDSP_Length(cols))
-      vDSP_meanv(Array(data[range]), 1, &mean, vDSP_Length(cols))
-      let variance = max(meanOfSquares - mean * mean, 0)
+      vDSP_meanv(row, 1, &mean, vDSP_Length(cols))
+      var variance: Float = 0
+      vDSP_measqv(vDSP.add(-mean, row), 1, &variance, vDSP_Length(cols))
       let inv = 1 / (variance + eps).squareRoot()
       for (j, i) in range.enumerated() {
         out.data[i] = (data[i] - mean) * inv * weight[j] + bias[j]

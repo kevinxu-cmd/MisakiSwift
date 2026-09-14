@@ -52,9 +52,12 @@ final class EnglishFallbackNetwork {
     self.tokenToPhoneme = phonemes
   }
 
+  /// BOS and EOS wrap the word, so only `maxPositionEmbeddings - 2` graphemes have a row in
+  /// the network's position table. A longer word is truncated to that many: no real word
+  /// reaches the limit, and a pronunciation of the leading graphemes beats a crash.
   private func graphemesToTokens(_ graphemes: String) -> [Int] {
     var tokens = [configuration.bosTokenId]
-    for char in graphemes {
+    for char in graphemes.prefix(configuration.maxPositionEmbeddings - 2) {
       tokens.append(graphemeToToken[char] ?? Self.unknownTokenId)
     }
     tokens.append(configuration.eosTokenId)

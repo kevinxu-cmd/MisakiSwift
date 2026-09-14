@@ -43,8 +43,10 @@ enum Safetensors {
       guard entry.data_offsets.count == 2 else { throw Error.badOffsets(name) }
       let start = entry.data_offsets[0]
       let end = entry.data_offsets[1]
-      let count = entry.shape.reduce(1, *)
-      guard start >= 0, end >= start, end <= body.count, end - start == count * 4 else {
+      guard let count = elementCount(entry.shape) else { throw Error.badOffsets(name) }
+      let (byteCount, tooManyBytes) = count.multipliedReportingOverflow(by: 4)
+      guard !tooManyBytes else { throw Error.badOffsets(name) }
+      guard start >= 0, end >= start, end <= body.count, end - start == byteCount else {
         throw Error.badOffsets(name)
       }
       let data = body.subdata(in: start..<end).withUnsafeBytes { buffer -> [Float] in
@@ -57,6 +59,20 @@ enum Safetensors {
       out[name] = Tensor(shape: entry.shape, data: data)
     }
     return out
+  }
+
+  /// The number of elements a shape describes, or nil if a dimension is negative or the
+  /// product runs past `Int.max`. A hostile header must be rejected below rather than trap
+  /// here, so the multiplication is checked at every step.
+  private static func elementCount(_ shape: [Int]) -> Int? {
+    var count = 1
+    for dimension in shape {
+      guard dimension >= 0 else { return nil }
+      let (product, overflowed) = count.multipliedReportingOverflow(by: dimension)
+      guard !overflowed else { return nil }
+      count = product
+    }
+    return count
   }
 
   /// The bundled weight file for one dialect, "us_bart" or "gb_bart".

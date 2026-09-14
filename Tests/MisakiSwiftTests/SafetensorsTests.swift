@@ -70,6 +70,13 @@ import Testing
     #expect(throws: Safetensors.Error.unsupportedDType("F16")) { try Safetensors.load(url) }
   }
 
+  /// A shape whose product runs past `Int.max` is rejected, not multiplied into a trap.
+  @Test func rejectsAShapeThatOverflows() throws {
+    let header = #"{"t":{"dtype":"F32","shape":[4611686018427387904,4],"data_offsets":[0,4]}}"#
+    let url = try file(header: header, body: Data([0, 0, 0, 0]), named: "overflowing-shape.safetensors")
+    #expect(throws: Safetensors.Error.self) { try Safetensors.load(url) }
+  }
+
   @Test func rejectsOffsetsPastTheBody() throws {
     let header = #"{"t":{"dtype":"F32","shape":[1,2],"data_offsets":[0,8]}}"#
     let url = try file(header: header, body: Data([0, 0, 0, 0]), named: "short-body.safetensors")

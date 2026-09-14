@@ -127,6 +127,10 @@ struct BARTNetwork: Sendable {
   private static let positionOffset = 2
 
   private func embed(_ ids: [Int], positions table: Matrix, norm: Norm) -> Matrix {
+    precondition(
+      ids.count + Self.positionOffset <= table.rows,
+      "BART has \(table.rows) position rows from row \(Self.positionOffset), so at most "
+        + "\(table.rows - Self.positionOffset) ids can be embedded, not \(ids.count)")
     var h = Matrix(rows: ids.count, cols: shared.cols)
     for (i, id) in ids.enumerated() {
       let token = shared.row(id)

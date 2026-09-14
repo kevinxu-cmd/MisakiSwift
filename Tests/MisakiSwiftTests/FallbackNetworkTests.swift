@@ -117,4 +117,11 @@ import Testing
   @Test func unknownGraphemesMapToTheUnknownToken() {
     #expect(!EnglishFallbackNetwork(british: false)(token("café")).phoneme.isEmpty)
   }
+
+  /// A word longer than the network's position table is truncated rather than fatal, and
+  /// it still comes back with a pronunciation.
+  @Test func aVeryLongWordIsTruncatedNotFatal() {
+    let word = String(repeating: "a", count: 200)
+    #expect(!EnglishFallbackNetwork(british: false)(token(word)).phoneme.isEmpty)
+  }
 }

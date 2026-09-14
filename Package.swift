@@ -7,9 +7,9 @@ let package = Package(
     .iOS(.v18), .macOS(.v15),
   ],
   products: [
-    // A static library: the app that links this copies one executable into its
-    // bundle, and a dynamic product would need to be embedded beside it.
-    .library(name: "MisakiSwift", targets: ["MisakiSwift"]),
+    // Static: the app that links this copies one executable into its bundle, and a
+    // dynamic product would have to be embedded beside it.
+    .library(name: "MisakiSwift", type: .static, targets: ["MisakiSwift"]),
   ],
   targets: [
     .target(
