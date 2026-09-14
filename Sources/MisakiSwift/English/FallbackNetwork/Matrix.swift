@@ -37,6 +37,7 @@ struct Matrix: Sendable {
   }
 
   func columns(from: Int, count: Int) -> Matrix {
+    precondition(from >= 0 && from + count <= cols)
     var out = Matrix(rows: rows, cols: count)
     for r in 0..<rows {
       for c in 0..<count { out.data[r * count + c] = data[r * cols + from + c] }
@@ -46,24 +47,22 @@ struct Matrix: Sendable {
 
   mutating func setColumns(from: Int, _ block: Matrix) {
     precondition(block.rows == rows)
+    precondition(from >= 0 && from + block.cols <= cols)
     for r in 0..<rows {
       for c in 0..<block.cols { data[r * cols + from + c] = block.data[r * block.cols + c] }
     }
   }
 
-  /// `self` [n,k] times `b` [k,m].
+  /// `self` [n,k] times `b` [k,m], via `vDSP_mmul` on the row-major buffers directly.
   func matmul(_ b: Matrix) -> Matrix {
     precondition(cols == b.rows)
     var out = Matrix(rows: rows, cols: b.cols)
     data.withUnsafeBufferPointer { a in
       b.data.withUnsafeBufferPointer { bp in
         out.data.withUnsafeMutableBufferPointer { c in
-          cblas_sgemm(
-            CblasRowMajor, CblasNoTrans, CblasNoTrans,
-            Int32(rows), Int32(b.cols), Int32(cols),
-            1, a.baseAddress, Int32(cols),
-            bp.baseAddress, Int32(b.cols),
-            0, c.baseAddress, Int32(b.cols))
+          vDSP_mmul(
+            a.baseAddress!, 1, bp.baseAddress!, 1, c.baseAddress!, 1,
+            vDSP_Length(rows), vDSP_Length(b.cols), vDSP_Length(cols))
         }
       }
     }
@@ -71,19 +70,24 @@ struct Matrix: Sendable {
   }
 
   /// `self` [n,d] times the transpose of `b` [m,d], giving [n,m]. This is both a linear
-  /// layer against a `[out,in]` weight and the query-key product of attention.
+  /// layer against a `[out,in]` weight and the query-key product of attention. `b` is
+  /// transposed into a scratch buffer with `vDSP_mtrans` first, since `vDSP_mmul` has no
+  /// transposed-operand option the way `cblas_sgemm` did.
   func matmulTransposed(_ b: Matrix) -> Matrix {
     precondition(cols == b.cols)
+    var transposed = [Float](repeating: 0, count: b.cols * b.rows)
+    b.data.withUnsafeBufferPointer { bp in
+      transposed.withUnsafeMutableBufferPointer { t in
+        vDSP_mtrans(bp.baseAddress!, 1, t.baseAddress!, 1, vDSP_Length(b.cols), vDSP_Length(b.rows))
+      }
+    }
     var out = Matrix(rows: rows, cols: b.rows)
     data.withUnsafeBufferPointer { a in
-      b.data.withUnsafeBufferPointer { bp in
+      transposed.withUnsafeBufferPointer { t in
         out.data.withUnsafeMutableBufferPointer { c in
-          cblas_sgemm(
-            CblasRowMajor, CblasNoTrans, CblasTrans,
-            Int32(rows), Int32(b.rows), Int32(cols),
-            1, a.baseAddress, Int32(cols),
-            bp.baseAddress, Int32(b.cols),
-            0, c.baseAddress, Int32(b.rows))
+          vDSP_mmul(
+            a.baseAddress!, 1, t.baseAddress!, 1, c.baseAddress!, 1,
+            vDSP_Length(rows), vDSP_Length(b.rows), vDSP_Length(cols))
         }
       }
     }

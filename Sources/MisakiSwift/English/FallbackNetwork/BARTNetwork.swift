@@ -118,6 +118,9 @@ struct BARTNetwork: Sendable {
       try layer("model.decoder.layers.\($0)", heads: config.decoderAttentionHeads, cross: true)
     }
     self.logitBias = try vector("final_logits_bias")
+    precondition(
+      config.decoderLayers == 1,
+      "BARTNetwork runs the decoder without a causal mask, which is exact only for one decoder layer")
   }
 
   /// BART's position table starts two rows in.
@@ -142,6 +145,8 @@ struct BARTNetwork: Sendable {
   /// Logits over the vocabulary for the last decoder position.
   func decodeLast(_ ids: [Int], encoder: Matrix) -> [Float] {
     var h = embed(ids, positions: decoderPositions, norm: decoderNorm)
+    // No causal mask is applied, so every row attends to every row; exact only because
+    // `init` guarantees a single decoder layer.
     for layer in decoderLayers { h = layer(h, encoder: encoder) }
     let last = Matrix(rows: 1, cols: h.cols, data: h.row(h.rows - 1))
     return last.matmulTransposed(shared).adding(bias: logitBias).row(0)
